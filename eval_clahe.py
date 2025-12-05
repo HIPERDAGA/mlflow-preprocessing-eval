@@ -27,6 +27,7 @@ from utils.dataset_loader import load_images_bgr, bgr_to_rgb
 from preprocessing.clahe_enhance import apply_clahe
 from metrics.niqe_metric import calculate_niqe
 from metrics.piqe_metric import calculate_piqe
+from metrics.brisque_metric import calculate_brisque
 
 def parse_args():
     ap = argparse.ArgumentParser()
@@ -50,19 +51,32 @@ def main():
         mlflow.log_param("tile_grid", f"{args.tiles}x{args.tiles}")
 
         imgs_bgr = load_images_bgr(args.data)
-
-        niqe_vals, piqe_vals = [], []
-
+        niqe_vals, piqe_vals, brisque_vals = [], [], []
+        
         for img_bgr in imgs_bgr:
             # Preprocesamiento
-            proc_bgr = apply_clahe(img_bgr, clip_limit=args.clip, tile_grid_size=(args.tiles, args.tiles))
-
-            # Convertir a RGB para métricas
+            proc_bgr = apply_clahe(
+                img_bgr,
+                clip_limit=args.clip,
+                tile_grid_size=(args.tiles, args.tiles),
+            )
             proc_rgb = bgr_to_rgb(proc_bgr)
-
+        
             # Métricas no-referenciales
             niqe_vals.append(calculate_niqe(proc_rgb))
             piqe_vals.append(calculate_piqe(proc_rgb))
+            brisque_vals.append(calculate_brisque(proc_rgb))
+        
+        # Promedios
+        niqe_avg = float(np.mean(niqe_vals))
+        piqe_avg = float(np.mean(piqe_vals))
+        brisque_avg = float(np.mean(brisque_vals))
+        
+        mlflow.log_metric("NIQE_avg", niqe_avg)
+        mlflow.log_metric("PIQE_avg", piqe_avg)
+        mlflow.log_metric("BRISQUE_avg", brisque_avg)
+
+
 
         # Promedios
         niqe_avg = float(np.mean(niqe_vals))
@@ -79,7 +93,9 @@ def main():
             f"tile_grid: {args.tiles}x{args.tiles}\n"
             f"NIQE_avg: {niqe_avg:.4f}\n"
             f"PIQE_avg: {piqe_avg:.4f}\n"
+            f"BRISQUE_avg: {brisque_avg:.4f}\n"
         )
+
         os.makedirs("artifacts", exist_ok=True)
         with open("artifacts/summary.txt", "w", encoding="utf-8") as f:
             f.write(summary)
