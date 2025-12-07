@@ -105,12 +105,15 @@ def main():
                 f"t0: {args.t0}\n"
                 f"top_percent: {args.top_percent}\n"
                 f"NIQE_avg: {niqe_avg:.4f}\n"
-                f"PIQE_avg: {piqe_avg:.44f}\n"
+                f"PIQE_avg: {piqe_avg:.4f}\n"
+                f"BRISQUE_avg: {brisque_avg:.4f}\n"
+
             )
         mlflow.log_artifact(summary_path)
 
         print("✅ Evaluación DCP completada.")
-        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f}")
+        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f} | BRISQUE_avg: {brisque_avg:.4f}")        
+    
 
 if __name__ == "__main__":
     main()
