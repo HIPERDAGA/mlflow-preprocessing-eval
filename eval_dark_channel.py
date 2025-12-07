@@ -32,6 +32,7 @@ from utils.dataset_loader import load_images_bgr, bgr_to_rgb
 from preprocessing.dark_channel_prior import apply_dark_channel_dehaze
 from metrics.niqe_metric import calculate_niqe
 from metrics.piqe_metric import calculate_piqe
+from metrics.brisque_metric import calculate_brisque
 
 def parse_args():
     ap = argparse.ArgumentParser()
@@ -67,11 +68,9 @@ def main():
         mlflow.log_param("top_percent", args.top_percent)
 
         imgs_bgr = load_images_bgr(args.data)
-
-        niqe_vals, piqe_vals = [], []
-
+        niqe_vals, piqe_vals, brisque_vals = [], [], []
+        
         for img_bgr in imgs_bgr:
-            # Dehazing
             dehazed_bgr = apply_dark_channel_dehaze(
                 img_bgr,
                 win_size=args.win,
@@ -79,17 +78,20 @@ def main():
                 t0=args.t0,
                 top_percent=args.top_percent,
             )
-
             dehazed_rgb = bgr_to_rgb(dehazed_bgr)
-
+        
             niqe_vals.append(calculate_niqe(dehazed_rgb))
             piqe_vals.append(calculate_piqe(dehazed_rgb))
-
+            brisque_vals.append(calculate_brisque(dehazed_rgb))
+        
         niqe_avg = float(np.mean(niqe_vals))
         piqe_avg = float(np.mean(piqe_vals))
-
+        brisque_avg = float(np.mean(brisque_vals))
+        
         mlflow.log_metric("NIQE_avg", niqe_avg)
         mlflow.log_metric("PIQE_avg", piqe_avg)
+        mlflow.log_metric("BRISQUE_avg", brisque_avg)
+
 
         # Guardar resumen como artefacto
         os.makedirs("artifacts_dcp", exist_ok=True)
