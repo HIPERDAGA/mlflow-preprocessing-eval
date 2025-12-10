@@ -10,10 +10,7 @@ import numpy as np
 import cv2
 
 
-def apply_white_balance_grayworld(
-    img_bgr: np.ndarray,
-    clip: bool = True,
-) -> np.ndarray:
+def apply_white_balance_grayworld(img_bgr: np.ndarray, clip: bool = True,) -> np.ndarray:
     """
     Aplica corrección de white balance con el supuesto Gray World.
 
