@@ -1,127 +1,107 @@
 # -*- coding: utf-8 -*-
-"""
-Evaluación de la técnica de White Balance (Gray World) con NIQE / PIQE / BRISQUE.
+"""eval_white_balance
 
-Uso:
-    python eval_white_balance.py \
-        --data "ruta/a/imagenes" \
-        --condition fog
+Evalúa White Balance (Gray World) bajo una condición (p. ej., 'fog')
+usando métricas NIQE/PIQE/BRISQUE y registra resultados en MLflow.
+
+Uso (Colab):
+    !pip install -r requirements.txt
+    from google.colab import drive; drive.mount('/content/drive')
+    import os; os.environ["MLFLOW_TRACKING_URI"] = "file:///content/drive/MyDrive/mlruns"
+    !python eval_white_balance.py --data "/content/drive/MyDrive/datasets/fog" --condition fog
 """
 
-import argparse
-import glob
 import os
-
-import cv2
-import mlflow
+import argparse
 import numpy as np
+import mlflow
 
+from utils.dataset_loader import load_images_bgr, bgr_to_rgb
 from preprocessing.white_balance import apply_white_balance
 from metrics.niqe_metric import calculate_niqe
 from metrics.piqe_metric import calculate_piqe
-from metrics.brisque_metric import calculate_brisque  # el que añadimos antes
+from metrics.brisque_metric import calculate_brisque
 
 
-# --------- utilidades sencillas ---------
+def parse_args():
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--data",
+        required=True,
+        help="Carpeta con imágenes de la condición adversa (ej. fog)",
+    )
+    ap.add_argument(
+        "--condition",
+        default="fog",
+        help="Etiqueta de la condición (fog/rain/snow/lowlight)",
+    )
+    ap.add_argument(
+        "--experiment",
+        default="preprocessing-eval",
+        help="Nombre del experimento en MLflow",
+    )
+    ap.add_argument(
+        "--method",
+        default="grayworld",
+        help="Método de white balance (por ahora solo 'grayworld')",
+    )
+    return ap.parse_args()
 
-EXTS = ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.tif", "*.tiff")
 
+def main():
+    args = parse_args()
 
-def load_images_paths(folder: str):
-    paths = []
-    for ext in EXTS:
-        paths.extend(glob.glob(os.path.join(folder, ext)))
-    paths = sorted(paths)
-    if not paths:
-        raise ValueError(f"No se encontraron imágenes en {folder}")
-    return paths
+    # Asegurar experimento
+    mlflow.set_experiment(args.experiment)
 
-
-def bgr_to_rgb(img_bgr):
-    return cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-
-
-# --------- evaluación ---------
-
-def run_eval(args):
-    mlflow.set_experiment("preprocessing_white_balance")
-
-    img_paths = load_images_paths(args.data)
-
-    niqe_vals, piqe_vals, brisque_vals = [], [], []
-
-    with mlflow.start_run(run_name=f"white_balance_{args.condition}"):
-        # Log de parámetros
-        mlflow.log_param("technique", "white_balance_grayworld")
+    with mlflow.start_run(run_name=f"WB_{args.condition}"):
+        mlflow.log_param("technique", "WHITE_BALANCE")
         mlflow.log_param("condition", args.condition)
-        mlflow.log_param("wb_method", "grayworld")
+        mlflow.log_param("wb_method", args.method)
 
-        for p in img_paths:
-            img_bgr = cv2.imread(p, cv2.IMREAD_COLOR)
-            if img_bgr is None:
-                print(f"⚠️ No se pudo leer la imagen: {p}")
-                continue
+        imgs_bgr = load_images_bgr(args.data)
+        niqe_vals, piqe_vals, brisque_vals = [], [], []
 
-            # --- preprocesado: white balance ---
-            wb_bgr = apply_white_balance(img_bgr, method="grayworld")
-            wb_rgb = bgr_to_rgb(wb_bgr)
+        for img_bgr in imgs_bgr:
+            # Preprocesamiento: WHITE BALANCE
+            proc_bgr = apply_white_balance(
+                img_bgr,
+                method=args.method,
+            )
+            proc_rgb = bgr_to_rgb(proc_bgr)
 
-            # --- métricas no-referenciales ---
-            niqe_vals.append(calculate_niqe(wb_rgb))
-            piqe_vals.append(calculate_piqe(wb_rgb))
-            brisque_vals.append(calculate_brisque(wb_rgb))
+            # Métricas no-referenciales
+            niqe_vals.append(calculate_niqe(proc_rgb))
+            piqe_vals.append(calculate_piqe(proc_rgb))
+            brisque_vals.append(calculate_brisque(proc_rgb))
 
-        if not niqe_vals:
-            raise RuntimeError("No se calcularon métricas (¿no hay imágenes válidas?).")
-
+        # Promedios
         niqe_avg = float(np.mean(niqe_vals))
         piqe_avg = float(np.mean(piqe_vals))
         brisque_avg = float(np.mean(brisque_vals))
 
-        # Log en MLflow
         mlflow.log_metric("NIQE_avg", niqe_avg)
         mlflow.log_metric("PIQE_avg", piqe_avg)
         mlflow.log_metric("BRISQUE_avg", brisque_avg)
 
-        # Resumen en texto
+        # Artefacto simple: guardamos un .txt con resumen
         summary = (
-            f"Technique: WHITE_BALANCE_GRAYWORLD\n"
+            f"Technique: WHITE_BALANCE\n"
             f"Condition: {args.condition}\n"
-            f"Images: {len(niqe_vals)}\n"
+            f"method: {args.method}\n"
             f"NIQE_avg: {niqe_avg:.4f}\n"
             f"PIQE_avg: {piqe_avg:.4f}\n"
             f"BRISQUE_avg: {brisque_avg:.4f}\n"
         )
 
+        os.makedirs("artifacts", exist_ok=True)
+        with open("artifacts/summary_white_balance.txt", "w", encoding="utf-8") as f:
+            f.write(summary)
+        mlflow.log_artifact("artifacts/summary_white_balance.txt")
+
         print("✅ Evaluación White Balance completada.")
         print(summary)
 
-        # Guardar resumen como artefacto de texto
-        with open("summary_white_balance.txt", "w", encoding="utf-8") as f:
-            f.write(summary)
-
-        mlflow.log_artifact("summary_white_balance.txt")
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Evaluar White Balance (Gray World) con NIQE/PIQE/BRISQUE"
-    )
-    parser.add_argument(
-        "--data",
-        type=str,
-        required=True,
-        help="Carpeta con las imágenes de entrada.",
-    )
-    parser.add_argument(
-        "--condition",
-        type=str,
-        required=True,
-        help="Condición (ej: fog, rain, snow, night, etc.)",
-    )
-    return parser.parse_args()
-
 
 if __name__ == "__main__":
-    args = parse_args()
-    run_eval(args)
+    main()
