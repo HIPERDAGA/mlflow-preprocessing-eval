@@ -33,6 +33,7 @@ from utils.dataset_loader import load_images_bgr, bgr_to_rgb
 from preprocessing.msr_retinex import apply_msr_retinex
 from metrics.niqe_metric import calculate_niqe
 from metrics.piqe_metric import calculate_piqe
+from metrics.brisque_metric import calculate_brisque
 
 def parse_args():
     ap = argparse.ArgumentParser()
@@ -87,15 +88,20 @@ def main():
             )
 
             msr_rgb = bgr_to_rgb(msr_bgr)
-
+            
+            # Métricas no-referenciales
             niqe_vals.append(calculate_niqe(msr_rgb))
             piqe_vals.append(calculate_piqe(msr_rgb))
+            brisque_vals.append(calculate_brisque(proc_rgb))
 
+        # Promedios    
         niqe_avg = float(np.mean(niqe_vals))
         piqe_avg = float(np.mean(piqe_vals))
+        brisque_avg = float(np.mean(brisque_vals))
 
         mlflow.log_metric("NIQE_avg", niqe_avg)
         mlflow.log_metric("PIQE_avg", piqe_avg)
+        mlflow.log_metric("BRISQUE_avg", brisque_avg)
 
         # Artefacto resumen
         os.makedirs("artifacts_msr", exist_ok=True)
@@ -115,7 +121,7 @@ def main():
         mlflow.log_artifact(summary_path)
 
         print("✅ Evaluación MSR completada.")
-        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f}")
+        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f} | BRISQUE_avg: {piqe_avg:.4f}")
 
 if __name__ == "__main__":
     main()
