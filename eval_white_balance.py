@@ -90,7 +90,7 @@ def main():
         mlflow.log_artifact(summary_path)
 
         print("✅ Evaluación WB completada.")
-        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f} | BRISQUE_avg: {bisque_avg:.4f}")
+        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f} | BRISQUE_avg: {brisque_avg:.4f}")
 
 if __name__ == "__main__":
     main()
