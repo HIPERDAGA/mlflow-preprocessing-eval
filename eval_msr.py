@@ -75,7 +75,7 @@ def main():
 
         imgs_bgr = load_images_bgr(args.data)
 
-        niqe_vals, piqe_vals = [], []
+        niqe_vals, piqe_vals, brisque_vals = [], [], []
 
         for img_bgr in imgs_bgr:
             msr_bgr = apply_msr_retinex(
@@ -121,7 +121,7 @@ def main():
         mlflow.log_artifact(summary_path)
 
         print("✅ Evaluación MSR completada.")
-        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f} | BRISQUE_avg: {piqe_avg:.4f}")
+        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f} | BRISQUE_avg: {brisque_avg:.4f}")
 
 if __name__ == "__main__":
     main()
