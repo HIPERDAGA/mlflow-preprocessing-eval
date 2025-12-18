@@ -76,7 +76,7 @@ def main():
         mlflow.log_metric("BRISQUE_avg", brisque_avg)
 
         # Artefacto simple: guardamos un .txt con resumen
-        os.makedirs("artifacts", exist_ok=True) 
+        os.makedirs("artifacts_wb", exist_ok=True) 
         summary_path = os.path.join("artifacts_wb", "summary_wb.txt")
         with open(summary_path, "w", encoding="utf-8") as f:
             f.write(
@@ -90,8 +90,7 @@ def main():
         mlflow.log_artifact(summary_path)
 
         print("✅ Evaluación WB completada.")
-        print(summary)
-        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f} | BRISQUE_avg: {piqe_avg:.4f}")
+        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f} | BRISQUE_avg: {bisque_avg:.4f}")
 
 if __name__ == "__main__":
     main()
