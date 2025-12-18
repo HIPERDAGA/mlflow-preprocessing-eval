@@ -92,7 +92,7 @@ def main():
             # Métricas no-referenciales
             niqe_vals.append(calculate_niqe(msr_rgb))
             piqe_vals.append(calculate_piqe(msr_rgb))
-            brisque_vals.append(calculate_brisque(proc_rgb))
+            brisque_vals.append(calculate_brisque(msr_rgb))
 
         # Promedios    
         niqe_avg = float(np.mean(niqe_vals))
