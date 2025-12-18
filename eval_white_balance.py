@@ -25,26 +25,15 @@ from metrics.brisque_metric import calculate_brisque
 
 def parse_args():
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--data",
-        required=True,
-        help="Carpeta con imágenes de la condición adversa (ej. fog)",
-    )
-    ap.add_argument(
-        "--condition",
-        default="fog",
-        help="Etiqueta de la condición (fog/rain/snow/lowlight)",
-    )
-    ap.add_argument(
-        "--experiment",
-        default="preprocessing-eval",
-        help="Nombre del experimento en MLflow",
-    )
-    ap.add_argument(
-        "--method",
-        default="grayworld",
-        help="Método de white balance (por ahora solo 'grayworld')",
-    )
+    ap.add_argument("--data",required=True,
+        help="Carpeta con imágenes de la condición adversa (ej. fog)")
+    ap.add_argument("--condition",default="fog",
+        help="Etiqueta de la condición (fog/rain/snow/lowlight)")
+    
+    ap.add_argument("--experiment",default="preprocessing-eval",
+                    help="Nombre del experimento en MLflow")
+    ap.add_argument("--method",default="grayworld",
+                    help="Método de white balance (por ahora solo 'grayworld')")
     return ap.parse_args()
 
 
@@ -54,7 +43,9 @@ def main():
     # Asegurar experimento
     mlflow.set_experiment(args.experiment)
 
-    with mlflow.start_run(run_name=f"WB_{args.condition}"):
+    run_name = f"WB_{args.condition}"
+    with mlflow.start_run(run_name=run_name):
+        # Parámetros registrados
         mlflow.log_param("technique", "WHITE_BALANCE")
         mlflow.log_param("condition", args.condition)
         mlflow.log_param("wb_method", args.method)
@@ -85,7 +76,10 @@ def main():
         mlflow.log_metric("BRISQUE_avg", brisque_avg)
 
         # Artefacto simple: guardamos un .txt con resumen
-        summary = (
+        os.makedirs("artifacts", exist_ok=True) 
+        summary_path = os.path.join("artifacts_wb", "summary_wb.txt")
+        with open(summary_path, "w", encoding="utf-8") as f:
+            f.write(
             f"Technique: WHITE_BALANCE\n"
             f"Condition: {args.condition}\n"
             f"method: {args.method}\n"
@@ -93,15 +87,11 @@ def main():
             f"PIQE_avg: {piqe_avg:.4f}\n"
             f"BRISQUE_avg: {brisque_avg:.4f}\n"
         )
+        mlflow.log_artifact(summary_path)
 
-        os.makedirs("artifacts", exist_ok=True)
-        with open("artifacts/summary_white_balance.txt", "w", encoding="utf-8") as f:
-            f.write(summary)
-        mlflow.log_artifact("artifacts/summary_white_balance.txt")
-
-        print("✅ Evaluación White Balance completada.")
+        print("✅ Evaluación WB completada.")
         print(summary)
-
+        print(f"NIQE_avg: {niqe_avg:.4f} | PIQE_avg: {piqe_avg:.4f} | BRISQUE_avg: {piqe_avg:.4f}")
 
 if __name__ == "__main__":
     main()
